@@ -16,6 +16,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 # Experimental parameters
 batch_size = 64
 hidden = [128, 32]
+epochs = 75
 
 # Sequence length parameters for synthetic data (2-year time span)
 T = 182     # Length of sequence input to encoder
@@ -67,8 +68,13 @@ def main():
     sess = tf.Session()
     sess.run(tf.global_variables_initializer()) 
 
+    # Initialize output directories for storing checkpoints and embeddings at each epoch
+    if not os.path.isdir('epoch_embeddings'):
+        os.mkdir('epoch_embeddings')
+    if not os.path.isdir('checkpoints'):
+        os.mkdir('checkpoints')
+
     # Run training
-    epochs = 75
     train_mse = []
     test_mse = []
     for epoch in range(epochs):
@@ -111,7 +117,7 @@ def main():
                 fid['h1'] = h1_vals
                 fid['t'] = time_train[ind_shuffle]
                 
-            # Compute encoder embedding inputs over all training inputs
+            # Compute encoder embedding inputs over all test inputs
             h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: Xt_test})
             # Save to disk
             with h5py.File('epoch_embeddings/test_epoch-%03d.h5' % epoch, 'w') as fid:
@@ -128,6 +134,8 @@ def main():
     ax1.plot(train_mse, label='Train MSE')
     ax1.plot(test_mse, label='Test MSE')
     leg = ax1.legend(loc='best')
+    ax1.set_xlabel('Epoch')
+    ax1.set_ylabel('MSE')
 
     # Randomly select some test sequences to plot
     n_plot = 4
