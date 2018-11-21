@@ -16,15 +16,16 @@ import os
 # Limit tensorflow to a single GPU
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
-from train_embedding import T, F, make_model, make_training_data
+import data_utils
+from train_embedding import T, F, make_model
 
 def main():
 
     # Make training and testing data
-    Xt_train, Xt_test, Xf_train, Xf_test, y_train, y_test, time_train, time_test = \
-        make_training_data(test_frac=0.0, shuffle=False)
-    n_train = Xt_train.shape[0]
-    n_test = Xt_test.shape[0]
+    train, test = data_utils.make_training_data(
+        in_seq_length=T, out_seq_length=F, filename='synthetic_data.h5',
+        shuffle=False, decoder=True, test_frac=0.0
+    )
 
     # Create placeholders for input data to encoder
     Xt = tf.placeholder(tf.float32, [None, T, 1])
@@ -55,7 +56,7 @@ def main():
     encoder_saver.restore(sess, 'checkpoints/encoder/variables.cpkt')
 
     # Compute embedding inputs over all inputs
-    h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: Xt_train})
+    h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: train.X})
 
     # Perform PCA on embeddings for visualization
     h0_vals = PCA(n_components=3, svd_solver='full').fit_transform(h0_vals)
@@ -72,7 +73,7 @@ def main():
     ax0 = fig.add_subplot(121, projection='3d')
     ax1 = fig.add_subplot(122, projection='3d')
 
-    c = time_train[:,-1,:].squeeze() % 1.0
+    c = train.time[:,-1,:].squeeze() % 1.0
     #c = time_train[:,-1,:].squeeze()
     sc0 = ax0.scatter(h0_vals[:,0], h0_vals[:,1], h0_vals[:,2], s=10, c=c, cmap='hsv')
     sc1 = ax1.scatter(h1_vals[:,0], h1_vals[:,1], h0_vals[:,2], s=10, c=c, cmap='hsv')

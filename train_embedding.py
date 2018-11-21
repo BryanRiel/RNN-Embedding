@@ -10,6 +10,8 @@ import math
 import sys
 import os
 
+import data_utils
+
 # Limit tensorflow to a single GPU on CUDA-enabled systems
 os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 
@@ -25,10 +27,12 @@ F = 30      # Length of sequence input to decoder
 def main():
 
     # Make training and testing data
-    Xt_train, Xt_test, Xf_train, Xf_test, y_train, y_test, time_train, time_test = \
-        make_training_data()
-    n_train = Xt_train.shape[0]
-    n_test = Xt_test.shape[0]
+    train, test = data_utils.make_training_data(
+        in_seq_length=T, out_seq_length=F, filename='synthetic_data.h5',
+        shuffle=False, decoder=True
+    )
+    n_train = train.X.shape[0]
+    n_test = test.X.shape[0]
 
     # Compute the number of batches
     n_batches = math.ceil(n_train // batch_size)
@@ -83,9 +87,9 @@ def main():
         ind_shuffle = np.random.permutation(n_train)
 
         # Shuffle data
-        Xt_train = Xt_train[ind_shuffle]
-        Xf_train = Xf_train[ind_shuffle]
-        y_train = y_train[ind_shuffle] 
+        Xt_train = train.X[ind_shuffle]
+        Xf_train = train.Xf[ind_shuffle]
+        y_train = train.y[ind_shuffle] 
        
         # Loop over batches
         start = 0
@@ -96,12 +100,15 @@ def main():
             feed_dict = {Xf: Xf_train[bslice], Xt: Xt_train[bslice], y: y_train[bslice]}
             sess.run(train_op, feed_dict=feed_dict) 
 
+            # Update batch index
+            start += batch_size
+
         # Diagnostics: print MSE on full training and testing set
         if epoch % 1 == 0:
 
             # Make feed dicts with full data
-            feed_dict_train = {Xf: Xf_train, Xt: Xt_train, y: y_train}
-            feed_dict_test = {Xf: Xf_test, Xt: Xt_test, y: y_test}
+            feed_dict_train = {Xf: train.Xf, Xt: train.X, y: train.y}
+            feed_dict_test = {Xf: test.Xf, Xt: test.X, y: test.y}
 
             # Compute losses
             train_mse.append(sess.run(loss, feed_dict=feed_dict_train))
@@ -110,20 +117,20 @@ def main():
                  (epoch, train_mse[-1], test_mse[-1]))
 
             # Compute encoder embedding inputs over all training inputs
-            h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: Xt_train})
+            h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: train.X})
             # Save to disk
             with h5py.File('epoch_embeddings/train_epoch-%03d.h5' % epoch, 'w') as fid:
                 fid['h0'] = h0_vals
                 fid['h1'] = h1_vals
-                fid['t'] = time_train[ind_shuffle]
+                fid['t'] = train.time[ind_shuffle]
                 
             # Compute encoder embedding inputs over all test inputs
-            h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: Xt_test})
+            h0_vals, h1_vals = sess.run([h0, h1], feed_dict={Xt: test.X})
             # Save to disk
             with h5py.File('epoch_embeddings/test_epoch-%03d.h5' % epoch, 'w') as fid:
                 fid['h0'] = h0_vals
                 fid['h1'] = h1_vals
-                fid['t'] = time_test
+                fid['t'] = test.time
 
     # Create a checkpoint to save results
     save_path = encoder_saver.save(sess, 'checkpoints/encoder/variables.cpkt')
@@ -140,9 +147,9 @@ def main():
     # Randomly select some test sequences to plot
     n_plot = 4
     ind = np.random.permutation(n_test)[:n_plot]
-    Xt_plot = Xt_test[ind]
-    Xf_plot = Xf_test[ind]
-    y_plot = y_test[ind]
+    Xt_plot = test.X[ind]
+    Xf_plot = test.Xf[ind]
+    y_plot = test.y[ind]
 
     # Predict outputs
     y_pred = sess.run(outputs, feed_dict={Xt: Xt_plot, Xf: Xf_plot, y: y_plot})
