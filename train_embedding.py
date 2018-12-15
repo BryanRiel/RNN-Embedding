@@ -18,7 +18,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '7'
 # Experimental parameters
 batch_size = 64
 hidden = [128, 32]
-epochs = 75
+epochs = 150
 
 # Sequence length parameters for synthetic data (2-year time span)
 T = 182     # Length of sequence input to encoder

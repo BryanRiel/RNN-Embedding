@@ -73,8 +73,8 @@ def main():
     ax0 = fig.add_subplot(121, projection='3d')
     ax1 = fig.add_subplot(122, projection='3d')
 
-    c = train.time[:,-1,:].squeeze() % 1.0
-    #c = time_train[:,-1,:].squeeze()
+    #c = train.time[:,-1,:].squeeze() % 1.0
+    c = train.time[:,-1,:].squeeze()
     sc0 = ax0.scatter(h0_vals[:,0], h0_vals[:,1], h0_vals[:,2], s=10, c=c, cmap='hsv')
     sc1 = ax1.scatter(h1_vals[:,0], h1_vals[:,1], h0_vals[:,2], s=10, c=c, cmap='hsv')
 
